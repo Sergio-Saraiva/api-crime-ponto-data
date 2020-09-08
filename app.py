@@ -102,7 +102,7 @@ def media_ocorrencias_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
 
     return jsonify({'nomedocrime':nomedocrime, 'sigla': sigla, 'inicio': inicio, 'fim': fim})
 
-# Media mensal de vítimas por estado dentro de um período (Cadu)
+# Media mensal de vítimas por estado dentro de um período (Geronimo)
 @app.route('/media/vitimas/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
 def media_vitimas_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
     token = request.headers.get('Authorization').split(' ')[1]
