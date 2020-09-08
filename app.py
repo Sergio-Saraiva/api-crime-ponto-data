@@ -1,5 +1,6 @@
 import os
 import jwt
+import pandas as pd
 from flask import Flask, request, jsonify
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 from flask_sqlalchemy import SQLAlchemy
@@ -11,6 +12,26 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 FlaskJSON(app)
 db = SQLAlchemy(app)
 
+
+arquivo = 'indicadoressegurancapublicaufabr20.xlsx'
+dicionario = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', ' ': '_'}
+#dicionario para remoção de acentos
+dadosOcorrencias = pd.read_excel(arquivo, sheet_name='Ocorrências')
+# le tabela de ocorrencias
+dadosVitimas = pd.read_excel(arquivo, sheet_name='Vítimas')
+# le tabela de vitimas 
+dadosVitimasDF = pd.DataFrame(dadosVitimas)
+# cria dataframde de vitimas
+dadosOcorrenciasDF = pd.DataFrame(dadosOcorrencias)
+# cria dataframe de ocorencias 
+dadosOcorrenciasDF.replace(dicionario, regex=True, inplace=True)
+# aplica o dicionario de remoção de acentos
+dadosOcorrenciasDF['uf'] = dadosOcorrenciasDF['uf'].str.lower()
+# transforma os valores para letra minuscula
+dadosOcorrenciasDF['tipocrime'] = dadosOcorrenciasDF['tipocrime'].str.lower()
+dadosVitimasDF.replace(dicionario, regex=True, inplace=True)
+dadosVitimasDF['uf'] = dadosVitimasDF['uf'].str.lower()
+dadosVitimasDF['tipocrime'] = dadosVitimasDF['tipocrime'].str.lower()
 
 def authorization(token):
     try:
@@ -64,10 +85,17 @@ def qtd_crime_ano(ano):
     token = request.headers.get('Authorization').split(' ')[1]
     if not(authorization(token)):
         return jsonify({'msg': 'Token inválido, faça login novamente'})
-    
-    print(ano)
 
-    return jsonify({'ano':ano})
+    if int(ano) < 2015:
+        return jsonify({'msg': 'Favor inserir ano entre 2015 e 2020'})
+
+    if int(ano) > 2020:
+        return jsonify({'msg': 'Favor inserir ano entre 2015 e 2020'})
+
+    resultVitimas = dadosVitimasDF.query('ano == valor'.replace('valor', ano)).vitimas
+    resultOcorencas = dadosOcorrenciasDF.query('ano == valor'.replace('valor', ano)).ocorrencias
+
+    return jsonify({'Ano':ano, 'Vítimas':sum(resultVitimas), 'Ocorrências': sum(resultOcorencas)})
 
 # Rota de quantidade de determinada ocorrencia por estado (Sérgio)
 @app.route('/quantidade/ocorrencias/<nome>/<sigla>', methods=['GET'])
@@ -76,9 +104,26 @@ def qtd_ocorrencias_nome_sigla(nome, sigla):
     if not(authorization(token)):
         return jsonify({'msg': 'Token inválido, faça login novamente'})
 
+    if nome == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
+        result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
+        return result.to_json()
+    
+    if sigla == 'bra' or sigla == 'brasil':
+        result = dadosOcorrenciasDF.query('tipocrime == "valor2"'.replace('valor2', nome)).ocorrencias
+        return jsonify({'quantidade': sum(result)})
+    
+    if nome == 'todos':
+        result = dadosOcorrenciasDF.query('uf == "valor1"'.replace('valor1', sigla)).drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
+        return result.to_json()
+
+    
+
+    result = dadosOcorrenciasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nome)).ocorrencias
+
+    print(sum(result))
     print(nome, sigla)
 
-    return jsonify({'nome':nome, 'sigla': sigla})
+    return jsonify({'quantidade': sum(result)})
 
 # Rota de quantidade de determinadas vititmas por estado (Raíssa)
 @app.route('/quantidade/vitimas/<nomedocrime>/<sigla>', methods=['GET'])
