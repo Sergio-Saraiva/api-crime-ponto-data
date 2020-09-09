@@ -12,6 +12,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 FlaskJSON(app)
 db = SQLAlchemy(app)
 
+from models import User
 
 arquivo = 'indicadoressegurancapublicaufabr20.xlsx'
 dicionario = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', ' ': '_'}
@@ -45,7 +46,6 @@ def authorization(token):
 # Rota de Cadastro
 @app.route('/cadastro', methods=['POST'])
 def cadastrar():
-    from models import User
 
     body = request.get_json(force=True)
     email = body['email']
