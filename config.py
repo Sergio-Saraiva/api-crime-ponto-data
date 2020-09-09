@@ -6,7 +6,7 @@ class Config(object):
     TESTING = False
     CSRF_ENABLED = True
     SECRET_KEY = 'this-really-needs-to-be-changed'
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:docker@localhost:5432/crime_ponto_data'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:apicrimepontodata@localhost:5432/crime_ponto_data'
 
 
 class ProductionConfig(Config):

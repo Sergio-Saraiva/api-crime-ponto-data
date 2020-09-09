@@ -12,6 +12,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 FlaskJSON(app)
 db = SQLAlchemy(app)
 
+#apicrimepontodata
+
 from models import User
 
 arquivo = 'indicadoressegurancapublicaufabr20.xlsx'
