@@ -85,9 +85,9 @@ def login():
 # Rota de quantidade de crimes por ano (Sérgio)
 @app.route('/quantidade/crimes/<ano>', methods=['GET'])
 def qtd_crime_ano(ano):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
     if int(ano) < 2015:
         return jsonify({'msg': 'Favor inserir ano entre 2015 e 2020'})
@@ -103,9 +103,9 @@ def qtd_crime_ano(ano):
 # Rota de quantidade de determinada ocorrencia por estado (Sérgio)
 @app.route('/quantidade/ocorrencias/<nome>/<sigla>', methods=['GET'])
 def qtd_ocorrencias_nome_sigla(nome, sigla):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
     if nome == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
         result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
