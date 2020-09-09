@@ -14,8 +14,6 @@ db = SQLAlchemy(app)
 
 #apicrimepontodata
 
-from models import User
-
 arquivo = 'indicadoressegurancapublicaufabr20.xlsx'
 dicionario = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', ' ': '_'}
 #dicionario para remoção de acentos
@@ -48,6 +46,9 @@ def authorization(token):
 # Rota de Cadastro
 @app.route('/cadastro', methods=['POST'])
 def cadastrar():
+
+    from models import User
+
 
     body = request.get_json(force=True)
     email = body['email']
