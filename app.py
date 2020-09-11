@@ -194,13 +194,10 @@ def ranking_estadual_por_crime(quantidade, nomedocrime):
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
-    print(quantidade, nomedocrime)
+    aux =  pd.DataFrame(dadosVitimas)
+    aux.columns=['uf', 'tipocrime', 'ano', 'mes', 'ocorrencias']
 
-    dadosVitimasDF.columns=['uf', 'tipocrime', 'ano', 'mes', 'ocorrencias']
-
-    crimesDF = pd.concat([dadosOcorrenciasDF, dadosVitimasDF])
-
-    print(crimesDF)
+    crimesDF = pd.concat([dadosOcorrenciasDF, aux])
 
     ocorrenciaEstado = crimesDF[crimesDF.tipocrime == nomedocrime]
     ocorrenciaEstado = ocorrenciaEstado.iloc[:,[0,4]]
