@@ -1,6 +1,7 @@
 import os
 import jwt
 import pandas as pd
+import numpy as np
 from flask import Flask, request, jsonify
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 from flask_sqlalchemy import SQLAlchemy
@@ -123,6 +124,7 @@ def qtd_ocorrencias_nome_sigla(nome, sigla):
 
     result = dadosOcorrenciasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nome)).ocorrencias
 
+
     print(sum(result))
     print(nome, sigla)
 
@@ -153,24 +155,59 @@ def media_ocorrencias_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
 # Media mensal de vítimas por estado dentro de um período (Geronimo)
 @app.route('/media/vitimas/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
 def media_vitimas_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
-    print(nomedocrime, sigla, inicio, fim)
+    mes_inicio, ano_inicio = inicio.split("-")
+    mes_inicio = int(mes_inicio)
+    ano_inicio = int(ano_inicio)
+    mes_fim, ano_fim = fim.split("-")
+    mes_fim = int(mes_fim)
+    ano_fim = int(ano_fim)
 
-    return jsonify({'nomedocrime':nomedocrime, 'sigla': sigla, 'inicio': inicio, 'fim': fim})
+    dicionario2 = {'janeiro': '1', 'fevereiro': '2', 'março': '3', 'abril': '4', 'maio': '5', 'junho': '6', 'julho' : '7', 'agosto' : '8', 'setembro' : '9', 'outubro' : '10', 'novembro' : '11', 'dezembro' : '12'}
+    dadosVitimasDF.replace(dicionario2, regex=True, inplace=True)
+    dadosVitimasDF.mes = dadosVitimasDF.mes.astype(int)
+
+    dadosVitimasDF0 = dadosVitimasDF[dadosVitimasDF.tipocrime == nomedocrime]
+    dadosVitimasDF0 = dadosVitimasDF0[dadosVitimasDF0.uf == sigla]
+
+    if (ano_fim != ano_inicio):
+        dadosVitimasDF1 = dadosVitimasDF0.loc[np.logical_and(dadosVitimasDF0.ano == ano_inicio, dadosVitimasDF0.mes >= mes_inicio)]
+        dadosVitimasDF2 = dadosVitimasDF0.loc[np.logical_and(dadosVitimasDF0.ano > ano_inicio, dadosVitimasDF0.ano < ano_fim)]
+        dadosVitimasDF3 = dadosVitimasDF0.loc[np.logical_and(dadosVitimasDF0.ano == ano_fim, dadosVitimasDF0.mes >= mes_fim)]
+        frames = [dadosVitimasDF1, dadosVitimasDF2, dadosVitimasDF3]
+        vitimasNoPeriodo = pd.concat(frames)
+    else:
+        vitimasNoPeriodo = dadosVitimasDF0.loc[np.logical_and(dadosVitimasDF0.mes >= mes_inicio, dadosVitimasDF0.mes <= mes_fim)]
+
+    vitimasNoPeriodo = vitimasNoPeriodo.iloc[:,[0,4]]
+    vitimasNoPeriodoMedio = vitimasNoPeriodo.mean(axis=0)
+
+    return vitimasNoPeriodoMedio.to_json()
 
 # Ranking estadual por crime (Geronimo)
 @app.route('/ranking/<quantidade>/estadual/<nomedocrime>')
 def ranking_estadual_por_crime(quantidade, nomedocrime):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
     print(quantidade, nomedocrime)
 
-    return jsonify({'nomedocrime':nomedocrime, 'quantidade': quantidade})
+    dadosVitimasDF.columns=['uf', 'tipocrime', 'ano', 'mes', 'ocorrencias']
+
+    crimesDF = pd.concat([dadosOcorrenciasDF, dadosVitimasDF])
+
+    print(crimesDF)
+
+    ocorrenciaEstado = crimesDF[crimesDF.tipocrime == nomedocrime]
+    ocorrenciaEstado = ocorrenciaEstado.iloc[:,[0,4]]
+    ranking = ocorrenciaEstado.groupby(['uf']).sum().sort_values(by=['ocorrencias'], ascending=False)
+    print(ranking.iloc[0:int(quantidade),:].to_json())
+
+    return ranking.iloc[0:int(quantidade),:].ocorrencias.to_json()
 
 # Ranking criminal por estado por estado (Lucas)
 @app.route('/ranking/<quantidade>/criminal/<sigla>')
