@@ -5,6 +5,9 @@ import numpy as np
 from flask import Flask, request, jsonify
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 from flask_sqlalchemy import SQLAlchemy
+from operator import itemgetter
+from funcoes_aux import converter_sigla2nome , converter_crime , converter_nome2sigla, contar_meses
+
 
 
 app = Flask(__name__)
@@ -16,7 +19,7 @@ db = SQLAlchemy(app)
 #apicrimepontodata
 
 arquivo = 'indicadoressegurancapublicaufabr20.xlsx'
-dicionario = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', ' ': '_'}
+dicionario = {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u','ã': 'a', 'õ': 'o', 'ê': 'e', ' ': '_'}
 #dicionario para remoção de acentos
 dadosOcorrencias = pd.read_excel(arquivo, sheet_name='Ocorrências')
 # le tabela de ocorrencias
@@ -108,6 +111,9 @@ def qtd_ocorrencias_nome_sigla(nome, sigla):
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
+    sigla = converter_sigla2nome(sigla)
+    nome = converter_crime(nome)
+
     if nome == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
         result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
         return result.to_json()
@@ -120,37 +126,72 @@ def qtd_ocorrencias_nome_sigla(nome, sigla):
         result = dadosOcorrenciasDF.query('uf == "valor1"'.replace('valor1', sigla)).drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
         return result.to_json()
 
-    
-
     result = dadosOcorrenciasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nome)).ocorrencias
-
-
-    print(sum(result))
-    print(nome, sigla)
 
     return jsonify({'quantidade': sum(result)})
 
 # Rota de quantidade de determinadas vititmas por estado (Raíssa)
 @app.route('/quantidade/vitimas/<nomedocrime>/<sigla>', methods=['GET'])
 def qtd_vitimas_nome_sigla(nomedocrime, sigla):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
-    print(nomedocrime, sigla)
+    sigla = converter_sigla2nome(sigla)
+    nomedocrime = converter_crime(nomedocrime)
 
-    return jsonify({'nomedocrime':nomedocrime, 'sigla': sigla})
+    if nomedocrime == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
+        result = dadosVitimasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().vitimas
+        return result.to_json()
+
+    if sigla == 'bra' or sigla == 'brasil':
+        result = dadosVitimasDF.query('tipocrime == "valor2"'.replace('valor2', nomedocrime)).vitimas
+        return jsonify({"UF" : "BR",'quantidade': sum(result)})
+
+    if nomedocrime == 'todos':
+        result = dadosVitimasDF.query('uf == "valor1"'.replace('valor1', sigla)).drop(['ano'], axis=1).groupby(['tipocrime']).sum().vitimas
+        return result.to_json()
+
+    if sigla == 'estados':
+            result = dadosVitimasDF.query('tipocrime == "valor2"'.replace('valor2', nomedocrime)).groupby(['uf']).sum().vitimas
+            return result.to_json()
+
+    result = dadosVitimasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nomedocrime)).vitimas
+
+    uf_estado = converter_nome2sigla(sigla)
+
+    return jsonify({'UF': uf_estado ,'quantidade': sum(result)})
 
 # Média mensal de ocorrenias por estado dentro de um período (Raíssa)
 @app.route('/media/ocorrencias/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
 def media_ocorrencias_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
     print(nomedocrime, sigla, inicio, fim)
 
-    return jsonify({'nomedocrime':nomedocrime, 'sigla': sigla, 'inicio': inicio, 'fim': fim})
+    sigla = converter_sigla2nome(sigla)
+    nomedocrime = converter_crime(nomedocrime)
+
+    if int(inicio) < 2015 or int(fim) > 2020:
+        return jsonify({'msg': 'Por favor inserir um periodo entre 2015 e 2020'})
+
+    if int(inicio) > int(fim):
+        aux = inicio
+        inicio = fim
+        fim = aux
+
+
+    if nomedocrime == 'todos' and (sigla == 'bra' or sigla == 'brasil') and inicio==2015 and fim==2020:
+        result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
+        #result = result/contar_meses(inicio,fim)
+        return result.to_json()
+
+
+    result = dadosOcorrenciasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nomedocrime)).ocorrencias
+
+    return jsonify({ 'UF': 'BRA', 'nomedocrime':nomedocrime, 'inicio': inicio, 'fim': fim, 'media_mensal' : sum(result)})
 
 # Media mensal de vítimas por estado dentro de um período (Geronimo)
 @app.route('/media/vitimas/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
@@ -158,6 +199,9 @@ def media_vitimas_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
     # token = request.headers.get('Authorization').split(' ')[1]
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
+
+    sigla = converter_sigla2nome(sigla)
+    nomedocrime = converter_crime(nomedocrime)
 
     mes_inicio, ano_inicio = inicio.split("-")
     mes_inicio = int(mes_inicio)
@@ -194,6 +238,8 @@ def ranking_estadual_por_crime(quantidade, nomedocrime):
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
+    nomedocrime = converter_crime(nomedocrime)
+
     aux =  pd.DataFrame(dadosVitimas)
     aux.columns=['uf', 'tipocrime', 'ano', 'mes', 'ocorrencias']
 
@@ -202,20 +248,38 @@ def ranking_estadual_por_crime(quantidade, nomedocrime):
     ocorrenciaEstado = crimesDF[crimesDF.tipocrime == nomedocrime]
     ocorrenciaEstado = ocorrenciaEstado.iloc[:,[0,4]]
     ranking = ocorrenciaEstado.groupby(['uf']).sum().sort_values(by=['ocorrencias'], ascending=False)
-    print(ranking.iloc[0:int(quantidade),:].to_json())
 
     return ranking.iloc[0:int(quantidade),:].ocorrencias.to_json()
 
 # Ranking criminal por estado por estado (Lucas)
 @app.route('/ranking/<quantidade>/criminal/<sigla>')
 def ranking_criminal_por_estado(quantidade, sigla):
-    token = request.headers.get('Authorization').split(' ')[1]
-    if not(authorization(token)):
-        return jsonify({'msg': 'Token inválido, faça login novamente'})
+    # token = request.headers.get('Authorization').split(' ')[1]
+    # if not(authorization(token)):
+    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
-    print(quantidade, sigla)
+    sigla = converter_sigla2nome(sigla)
 
-    return jsonify({'sigla':sigla, 'quantidade': quantidade})
+    aux = {}
+
+    if sigla == 'bra' or sigla == 'brasil':
+        for i in range(0, dadosOcorrenciasDF.index.stop):
+            aux.update({dadosOcorrenciasDF.loc[i, 'tipocrime']: int(0 if aux.get(dadosOcorrenciasDF.loc[i, 'tipocrime']) is None else aux.get(dadosOcorrenciasDF.loc[i, 'tipocrime'])) + int(dadosOcorrenciasDF.loc[i, 'ocorrencias'])})
+    else:
+        for i in range(0, dadosOcorrenciasDF.index.stop):
+            if dadosOcorrenciasDF.loc[i, 'uf'] == sigla:
+                aux.update({dadosOcorrenciasDF.loc[i, 'tipocrime']: int(0 if aux.get(dadosOcorrenciasDF.loc[i, 'tipocrime']) is None else aux.get(dadosOcorrenciasDF.loc[i, 'tipocrime'])) + int(dadosOcorrenciasDF.loc[i, 'ocorrencias'])})
+
+    aux = dict(sorted(aux.items(), key=itemgetter(1), reverse=True))
+    result = list(aux)[:int(quantidade)]
+    lista = [None]*len(result)
+    for i in range(len(result)):
+        lista[i] = aux[result[i]]
+    
+    auxDF = pd.DataFrame({'crime': result, 'ocorrencias': lista})
+    auxDF.reset_index(drop=True)
+    
+    return auxDF.reset_index().to_json(orient='records')
 
 if __name__ == '__main__':
     app.run()
