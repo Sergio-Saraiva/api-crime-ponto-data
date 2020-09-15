@@ -37,9 +37,12 @@ dadosOcorrenciasDF['tipocrime'] = dadosOcorrenciasDF['tipocrime'].str.lower()
 dadosVitimasDF.replace(dicionario, regex=True, inplace=True)
 dadosVitimasDF['uf'] = dadosVitimasDF['uf'].str.lower()
 dadosVitimasDF['tipocrime'] = dadosVitimasDF['tipocrime'].str.lower()
+
 dicionario2 = {'janeiro': '1', 'fevereiro': '2', 'marco': '3', 'abril': '4', 'maio': '5', 'junho': '6', 'julho' : '7', 'agosto' : '8', 'setembro' : '9', 'outubro' : '10', 'novembro' : '11', 'dezembro' : '12'}
 dadosVitimasDF.mes.replace(dicionario2, regex=True, inplace=True)
 
+dicionario_mes = {'janeiro': '1', 'fevereiro': '2', 'marco': '3', 'abril': '4', 'maio': '5', 'junho': '6', 'julho' : '7', 'agosto' : '8', 'setembro' : '9', 'outubro' : '10', 'novembro' : '11', 'dezembro' : '12'}
+dadosOcorrenciasDF.mes.replace(dicionario_mes, regex=True, inplace=True)
 
 def authorization(token):
     try:
@@ -114,14 +117,8 @@ def qtd_ocorrencias_nome_sigla(nome, sigla):
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
 
-    print(nome)
-
     sigla = converter_sigla2nome(sigla)
     nome = converter_crime(nome)
-
-    print(nome)
-
-    print(dadosOcorrenciasDF.head())
 
     if nome == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
         result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
@@ -145,17 +142,12 @@ def qtd_vitimas_nome_sigla(nomedocrime, sigla):
     # token = request.headers.get('Authorization').split(' ')[1]
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
-
-    print(nomedocrime)
     
     # Tratamento dos dados de entrada
 
     sigla = converter_sigla2nome(sigla)
     nomedocrime = converter_crime(nomedocrime)
 
-    print(nomedocrime)
-
-    print(dadosVitimasDF[2900:3220])
 
     if nomedocrime == 'todos' and(sigla == 'bra' or sigla == 'brasil'):
         result = dadosVitimasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().vitimas
@@ -197,8 +189,6 @@ def media_ocorrencias_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
     mes_fim = int(mes_fim)
     ano_fim = int(ano_fim)
 
-    dicionario_mes = {'janeiro': '1', 'fevereiro': '2', 'março': '3', 'abril': '4', 'maio': '5', 'junho': '6', 'julho' : '7', 'agosto' : '8', 'setembro' : '9', 'outubro' : '10', 'novembro' : '11', 'dezembro' : '12'}
-    dadosOcorrenciasDF.replace(dicionario_mes, regex=True, inplace=True)
     dadosOcorrenciasDF.mes = dadosOcorrenciasDF.mes.astype(int)
 
     dadosOcorrenciasDF0 = dadosOcorrenciasDF[dadosOcorrenciasDF.tipocrime == nomedocrime]
