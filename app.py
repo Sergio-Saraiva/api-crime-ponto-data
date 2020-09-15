@@ -136,7 +136,8 @@ def qtd_vitimas_nome_sigla(nomedocrime, sigla):
     # token = request.headers.get('Authorization').split(' ')[1]
     # if not(authorization(token)):
     #     return jsonify({'msg': 'Token inválido, faça login novamente'})
-
+    
+    # Tratamento dos dados de entrada
     sigla = converter_sigla2nome(sigla)
     nomedocrime = converter_crime(nomedocrime)
 
@@ -165,33 +166,41 @@ def qtd_vitimas_nome_sigla(nomedocrime, sigla):
 # Média mensal de ocorrenias por estado dentro de um período (Raíssa)
 @app.route('/media/ocorrencias/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
 def media_ocorrencias_nome_sigla_periodo(nomedocrime, sigla, inicio, fim):
-    # token = request.headers.get('Authorization').split(' ')[1]
-    # if not(authorization(token)):
-    #     return jsonify({'msg': 'Token inválido, faça login novamente'})
-
-    print(nomedocrime, sigla, inicio, fim)
-
+    #token = request.headers.get('Authorization').split(' ')[1]
+    #if not(authorization(token)):
+    #    return jsonify({'msg': 'Token inválido, faça login novamente'})
+    
+    # Tratamento dos dados de entrada
     sigla = converter_sigla2nome(sigla)
     nomedocrime = converter_crime(nomedocrime)
 
-    if int(inicio) < 2015 or int(fim) > 2020:
-        return jsonify({'msg': 'Por favor inserir um periodo entre 2015 e 2020'})
+    mes_inicio, ano_inicio = inicio.split("-")
+    mes_inicio = int(mes_inicio)
+    ano_inicio = int(ano_inicio)
+    mes_fim, ano_fim = fim.split("-")
+    mes_fim = int(mes_fim)
+    ano_fim = int(ano_fim)
 
-    if int(inicio) > int(fim):
-        aux = inicio
-        inicio = fim
-        fim = aux
+    dicionario_mes = {'janeiro': '1', 'fevereiro': '2', 'março': '3', 'abril': '4', 'maio': '5', 'junho': '6', 'julho' : '7', 'agosto' : '8', 'setembro' : '9', 'outubro' : '10', 'novembro' : '11', 'dezembro' : '12'}
+    dadosOcorrenciasDF.replace(dicionario_mes, regex=True, inplace=True)
+    dadosOcorrenciasDF.mes = dadosOcorrenciasDF.mes.astype(int)
 
+    dadosOcorrenciasDF0 = dadosOcorrenciasDF[dadosOcorrenciasDF.tipocrime == nomedocrime]
+    dadosOcorrenciasDF0 = dadosOcorrenciasDF0[dadosOcorrenciasDF0.uf == sigla]
 
-    if nomedocrime == 'todos' and (sigla == 'bra' or sigla == 'brasil') and inicio==2015 and fim==2020:
-        result = dadosOcorrenciasDF.drop(['ano'], axis=1).groupby(['tipocrime']).sum().ocorrencias
-        #result = result/contar_meses(inicio,fim)
-        return result.to_json()
+    if (ano_fim != ano_inicio):
+        dadosOcorrenciasDF1 = dadosOcorrenciasDF0.loc[np.logical_and(dadosOcorrenciasDF0.ano == ano_inicio, dadosOcorrenciasDF0.mes >= mes_inicio)]
+        dadosOcorrenciasDF2 = dadosOcorrenciasDF0.loc[np.logical_and(dadosOcorrenciasDF0.ano > ano_inicio, dadosOcorrenciasDF0.ano < ano_fim)]
+        dadosOcorrenciasDF3 = dadosOcorrenciasDF0.loc[np.logical_and(dadosOcorrenciasDF0.ano == ano_fim, dadosOcorrenciasDF0.mes >= mes_fim)]
+        frames = [dadosOcorrenciasDF1, dadosOcorrenciasDF2, dadosOcorrenciasDF3]
+        ocorrenciasNoPeriodo = pd.concat(frames)
+    else:
+        ocorrenciasNoPeriodo = dadosOcorrenciasDF0.loc[np.logical_and(dadosOcorrenciasDF0.mes >= mes_inicio, dadosOcorrenciasDF0.mes <= mes_fim)]
 
+    ocorrenciasNoPeriodo = ocorrenciasNoPeriodo.iloc[:,[0,4]]
+    ocorrenciasNoPeriodoMedio = ocorrenciasNoPeriodo.mean(axis=0)
 
-    result = dadosOcorrenciasDF.query('uf == "valor1" & tipocrime == "valor2"'.replace('valor1', sigla).replace('valor2', nomedocrime)).ocorrencias
-
-    return jsonify({ 'UF': 'BRA', 'nomedocrime':nomedocrime, 'inicio': inicio, 'fim': fim, 'media_mensal' : sum(result)})
+    return  ocorrenciasNoPeriodoMedio.to_json ()
 
 # Media mensal de vítimas por estado dentro de um período (Geronimo)
 @app.route('/media/vitimas/<nomedocrime>/<sigla>/<inicio>/<fim>', methods=['GET'])
